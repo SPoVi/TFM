@@ -3,7 +3,7 @@
  * https://github.com/SuperHouse/AQS/blob/main/Firmware/AirQualitySensorD1Mini/AirQualitySensorD1Mini.ino
  *
  */
-#define VERSION "1.2"
+#define VERSION "1.3"
 
 /*------------------- Configuration -------------------------*/
 // Configuration should be done in the included file:
@@ -240,7 +240,7 @@ void reconnectMqtt(){
       delay(5000);
     }
   }
-
+  
 }
 // PROCEDURE - Callback : recibir mensaje de un topic ------------------------------------------------------
 /*
@@ -270,19 +270,19 @@ void updateReadings(){
    GSR_tStart=micros();             // Inicio del tiempo para coger muestras. OJO MICROSEGUNDOS 10^-6
    for (int i=0; i<g_mysize;i++){
     g_data[i]=analogRead(g_pin_GSR);  // recogo 'mysize' numero muestras
-     //time[i]=micros();
+     //time[i]=micros();       
    GSR_tEnd=micros();              // Fin del tiempo para coger muestras
    }
 
   // Mostrar tiempo necesitado para leer los datos por pantalla
-  showTimeNeeded(GSR_tStart,GSR_tEnd);
+  showTimeNeeded(GSR_tStart,GSR_tEnd);    
   g_GSR_readings_taken = true;
 
 
   // Creacion del paquete y Mostrar datos del vector enviados
   for (int i=0; i<g_mysize;i++){
     Serial.println(g_data[i],DEC);
-    g_GSR_value.concat(g_data[i]);          // Creacion del paquete de datos
+    g_GSR_value.concat(g_data[i]);          // Creacion del paquete de datos 
     //g_GSR_value.concat(" ");                // Añade espacio
   }
 
@@ -298,7 +298,7 @@ void updateReadings(){
 void reportToMqtt()
 {
   String message_string;
-  unsigned long int gsr_time;
+  
 
   #if REPORT_MQTT_SEPARATE
     if (true == g_GSR_readings_taken)
@@ -335,11 +335,12 @@ void reportToMqtt()
       if (true == g_GSR_readings_taken)
       {
          // Convertir a array
-         message_string = String(g_GSR_value);
-         message_string.toCharArray(g_mqtt_message_buffer, message_string.length() + 1);
-
-         sprintf(g_mqtt_message_buffer,  "{\"ID:%s\":{\"GSR\":%s\",\"GSR Time\":%i}}",
-              g_cliente_ID, message_string, String(g_GSR_time));
+         String str = String(g_GSR_value);
+         char char_array[str.length()+1];
+         str.toCharArray(char_array, message_string.length() + 1);
+      
+         sprintf(g_mqtt_message_buffer,  "{\"ID:%s\":{\"GSR\":%i\",\"GSR Time\":%i}}",
+              g_cliente_ID, g_GSR_value, g_GSR_time);
       }
       mqttClient.publish(g_mqtt_json_topic, g_mqtt_message_buffer);
     #endif
@@ -357,7 +358,7 @@ void showTimeNeeded(unsigned long t_start, unsigned long t_end)
   Serial.print("Fin del tiempo (tEnd) = ");
   Serial.println(t_end);    // Fin del tiempo
   Serial.print("Tarda (tEnd-tStart) = ");
-  Serial.println(t_end-t_start); // Lo que ha tardado en recoger la informacion
+  Serial.println(t_end-t_start); // Lo que ha tardado en recoger la informacion 
 }
 
 // PROCEDURE - Mostar por pantalla --------------------------------------------------------------------------
@@ -370,7 +371,7 @@ void reportToSerial()
     Serial.print("Paciente: ");
     Serial.println(g_cliente_ID);
     /* Report GSR value*/
-
+    
     Serial.print(g_GSR_mqtt_topic);
     Serial.print(" topic is GSR: ");
     Serial.println(String(g_GSR_value));
@@ -378,8 +379,7 @@ void reportToSerial()
     /* Report GSR time value*/
     Serial.print("Time: ");
     Serial.println(String(g_GSR_time));
-
+   
   }
   Serial.println();
 }
-
