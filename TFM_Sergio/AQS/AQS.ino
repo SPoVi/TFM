@@ -3,7 +3,7 @@
  * https://github.com/SuperHouse/AQS/blob/main/Firmware/AirQualitySensorD1Mini/AirQualitySensorD1Mini.ino
  *
  */
-#define VERSION "1.1"
+#define VERSION "1.2"
 
 /*------------------- Configuration -------------------------*/
 // Configuration should be done in the included file:
@@ -21,8 +21,11 @@
 // g_: for global
 
 // SENSORS
+#define g_mysize 10                         // Tamaño del vector de datos
+byte g_data[g_mysize];                      // Vector de datos
+
 bool g_GSR_readings_taken     = false;      // true/fasle: whether any readings have been taken
-String g_GSR_value            = "";         // Value for sensor GSR
+String g_GSR_value            = "";                       // Value for sensor GSR
 unsigned long g_GSR_time      = 0;          // Value for sensor GSR time
 int g_pin_GSR                 = A0;         // Analog pin on NN33IoT
 bool g_GSR_state_start        = 0;          // Timestamp when GSR state last changed
@@ -54,9 +57,6 @@ char* g_cliente_ID;                        // Simulate chipID
 unsigned long g_tStart;                     // Initial time for measuring time spent
 unsigned long g_tEnd;                       // End time for measuring time spent
 
-String g_paquete = "";                      // Paquete de datos MQTT
-#define g_mysize 10                         // Tamaño del vector de datos
-byte g_data[g_mysize];                      // Vector de datos
 
 /*------------------- Instantiate Global Objects ----------------*/
 // MQTT
@@ -80,6 +80,8 @@ void showTimeNeeded();                                              // Done
 
 void setup()
 {
+  delay(1000); // quitar
+
   // Initialize connection
   Serial.begin(SERIAL_BAUD_RATE);
   Serial.println();
@@ -94,7 +96,7 @@ void setup()
   /*------------------TOPICS-----------------------------------------------------------------------------------------*/
   // Set up the topics for publishing sensor readings. By inserting the unique ID,
   // the result is of the form: "arduino_1/GSR/valor" etc
-  sprintf(g_command_topic, "cmnd/%/COMMAND", g_cliente_ID);     // For receiving commands
+  sprintf(g_command_topic, "cmnd/%s/COMMAND", g_cliente_ID);     // For receiving commands
 
   #if REPORT_MQTT_SEPARATE
     sprintf(g_GSR_mqtt_topic, "arduino_1/%s/GSR/valor", g_cliente_ID);    // Data form AN33IoT
@@ -134,8 +136,9 @@ void setup()
   /* Set up the MQTT client */
   mqttClient.setServer(mqtt_broker, port);
   mqttClient.setCallback(mqttCallback);
-  mqttClient.setBufferSize(255);              // ???????????????
+  mqttClient.setBufferSize(255);              // Tamaño del paquete que puede enviar MQTT por defecto 128
 
+  delay(1000); // quitar
 }
 
 /*
@@ -212,7 +215,7 @@ bool initWiFi()
 // PROCEDURE - Reconnect to MQTT broker, and publish a notifiacion to the status topic -------------------------------
 void reconnectMqtt(){
   char mqtt_client_id[20];
-  sprintf(mqtt_client_id, "Paciente-%x", g_cliente_ID); // Añade a mqtt_client_id donde %x lee valor dado g_cliente_ID
+  sprintf(mqtt_client_id, "Paciente-%s", g_cliente_ID); // Añade a mqtt_client_id donde %x lee valor dado g_cliente_ID
 
   // Loop until we're reconnected
   while(!mqttClient.connected())
@@ -223,7 +226,7 @@ void reconnectMqtt(){
     {
       Serial.println("connected");
       // Once connected, publish announcement
-      sprintf(g_mqtt_message_buffer, "Device %s starting up", mqtt_client_id);
+      sprintf(g_mqtt_message_buffer, "Device %s starting up..", mqtt_client_id);
       mqttClient.publish(status_topic, g_mqtt_message_buffer);
       // Resubscribe
       // mqttclient.subscribe(g_command_topic);     // Activar cuando se requiera leer topic
@@ -279,18 +282,16 @@ void updateReadings(){
   // Creacion del paquete y Mostrar datos del vector enviados
   for (int i=0; i<g_mysize;i++){
     Serial.println(g_data[i],DEC);
-    g_paquete.concat(g_data[i]);          // Creacion del paquete de datos
-    //g_paquete.concat(" ");
+    g_GSR_value.concat(g_data[i]);          // Creacion del paquete de datos
+    //g_GSR_value.concat(" ");                // Añade espacio
   }
-
-  g_GSR_value = g_paquete;
 
   // Report the new values
    reportToMqtt();
    reportToSerial();
 
    // Vaciar paquete
-   g_paquete = "";
+   g_GSR_value = "";
 }
 
 // PROCEDURE - Report the latest values to MQTT -------------------------------------------------------------
@@ -333,8 +334,12 @@ void reportToMqtt()
 
       if (true == g_GSR_readings_taken)
       {
-         sprintf(g_mqtt_message_buffer,  "{\"IDSPV001\":{\"GSR\":%i,\"GSR Time\":%i}}",
-              g_GSR_value, String(g_GSR_time));
+         // Convertir a array
+         message_string = String(g_GSR_value);
+         message_string.toCharArray(g_mqtt_message_buffer, message_string.length() + 1);
+
+         sprintf(g_mqtt_message_buffer,  "{\"ID:%s\":{\"GSR\":%s\",\"GSR Time\":%i}}",
+              g_cliente_ID, message_string, String(g_GSR_time));
       }
       mqttClient.publish(g_mqtt_json_topic, g_mqtt_message_buffer);
     #endif
@@ -360,11 +365,15 @@ void reportToSerial()
 {
   if (true == g_GSR_readings_taken)
   {
+
+    /* Paciente*/
+    Serial.print("Paciente: ");
+    Serial.println(g_cliente_ID);
     /* Report GSR value*/
-    //Serial.print(g_cliente_ID);
+
     Serial.print(g_GSR_mqtt_topic);
     Serial.print(" topic is GSR: ");
-    Serial.println(String(g_paquete));
+    Serial.println(String(g_GSR_value));
 
     /* Report GSR time value*/
     Serial.print("Time: ");
