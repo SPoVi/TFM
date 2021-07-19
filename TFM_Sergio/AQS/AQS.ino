@@ -339,7 +339,7 @@ void reportToMqtt()
          char char_array[str.length()+1];
          str.toCharArray(char_array, message_string.length() + 1);
       
-         sprintf(g_mqtt_message_buffer,  "{\"ID:%s\":{\"GSR\":%i\",\"GSR Time\":%i}}",
+         sprintf(g_mqtt_message_buffer,  "{\"ID:%s\":{\"GSR\":%i,\"GSR Time\":%i}}",
               g_cliente_ID, g_GSR_value, g_GSR_time);
       }
       mqttClient.publish(g_mqtt_json_topic, g_mqtt_message_buffer);
