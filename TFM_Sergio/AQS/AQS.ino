@@ -1,9 +1,10 @@
 /*
  * SUPERHOUSE AUTOMATION (http://www.superhouse.tv)
  * https://github.com/SuperHouse/AQS/blob/main/Firmware/AirQualitySensorD1Mini/AirQualitySensorD1Mini.ino
- *
+ * 
+ * Ultima fecha de modificacion: 19/07/2021
  */
-#define VERSION "1.3"
+#define VERSION "1.4"
 
 /*------------------- Configuration -------------------------*/
 // Configuration should be done in the included file:
@@ -12,7 +13,7 @@
 /*------------------- Libraries -----------------------------*/
 #include <WiFiNINA.h>
 #include <PubSubClient.h>
-/*
+/* 
  *  TODO : Buscar una forma de incluir libreria de tiempo.
  *  Necesita que lepases la hora. Utilizar datos subMqtt y  Node-red ??
  */
@@ -81,7 +82,7 @@ void showTimeNeeded();                                              // Done
 void setup()
 {
   delay(1000); // quitar
-
+  
   // Initialize connection
   Serial.begin(SERIAL_BAUD_RATE);
   Serial.println();
@@ -91,7 +92,7 @@ void setup()
   // We need a unique device ID for our MQTT client connection
   // g_cliente_ID = NewClientID();
   g_cliente_ID = "IDSPV001";       // Get ID. Revisar TODO.
-
+  
 
   /*------------------TOPICS-----------------------------------------------------------------------------------------*/
   // Set up the topics for publishing sensor readings. By inserting the unique ID,
@@ -126,7 +127,7 @@ void setup()
     Serial.println(ssid);
     Serial.print("IP local address: ");
     Serial.println(WiFi.localIP());
-  }
+  } 
   else
   {
     Serial.print("WiFi FAILED");
@@ -157,7 +158,7 @@ void loop() {
   mqttClient.loop();           // Proces any outstanding MQTT messages
 
   updateReadings();
-
+  
 
 }
 
@@ -165,7 +166,7 @@ void loop() {
 /*
  *  TODO: Que las iniciales del paciente formen parte del ID. Que se intrduzca por teclado.
  *  Compatibilidad con base de datoso para la numeracion y que sea un ID único.
- *
+ *  
  *  Idea: utilizar fecha y hora de creacion como parametro ID
  */
 String NewClientID()
@@ -205,11 +206,11 @@ bool initWiFi()
    if (WiFi.status() != WL_CONNECTED)
    {
      return false;
-   }
+   } 
    else
    {
      return true;
-   }
+   }   
 }
 
 // PROCEDURE - Reconnect to MQTT broker, and publish a notifiacion to the status topic -------------------------------
@@ -229,7 +230,7 @@ void reconnectMqtt(){
       sprintf(g_mqtt_message_buffer, "Device %s starting up..", mqtt_client_id);
       mqttClient.publish(status_topic, g_mqtt_message_buffer);
       // Resubscribe
-      // mqttclient.subscribe(g_command_topic);     // Activar cuando se requiera leer topic
+      // mqttclient.subscribe(g_command_topic);     // Activar cuando se requiera leer topic   
     }
     else // Omitir Serial para acelerar código
     {
@@ -283,7 +284,7 @@ void updateReadings(){
   for (int i=0; i<g_mysize;i++){
     Serial.println(g_data[i],DEC);
     g_GSR_value.concat(g_data[i]);          // Creacion del paquete de datos 
-    //g_GSR_value.concat(" ");                // Añade espacio
+    g_GSR_value.concat("-");                // Añade espacio
   }
 
   // Report the new values
@@ -335,12 +336,25 @@ void reportToMqtt()
       if (true == g_GSR_readings_taken)
       {
          // Convertir a array
-         String str = String(g_GSR_value);
-         char char_array[str.length()+1];
-         str.toCharArray(char_array, message_string.length() + 1);
-      
-         sprintf(g_mqtt_message_buffer,  "{\"ID:%s\":{\"GSR\":%i,\"GSR Time\":%i}}",
-              g_cliente_ID, g_GSR_value, g_GSR_time);
+         String str = g_GSR_value;
+         char char_array[g_GSR_value.length()];
+         str.toCharArray(char_array, g_GSR_value.length());  // Eliminado el +1 para elimnar el ultimo caracter separador 
+
+         /* BORRRAAARRRR ----------------------------------------------------------"""""""""""""!!!!!!!!!!!!!
+         
+         Serial.println();
+         Serial.print("VALOR DE CHAR ARRAY: ");
+         Serial.println(char_array);
+         Serial.print("VALOR DE g_GSR_value: ");
+         Serial.println(g_GSR_value.length());
+         Serial.println();
+         
+         delay(5000);
+
+         //--------------------------------------------------------------------------------------------------
+         */
+         sprintf(g_mqtt_message_buffer,  "{\"ID:%s\":{\"GSR\":\"%s\",\"GSR Time\":%i}}",  // Es necesario poner %s entre "\%s"\ por ser un string o char 
+              g_cliente_ID, char_array, g_GSR_time);
       }
       mqttClient.publish(g_mqtt_json_topic, g_mqtt_message_buffer);
     #endif
