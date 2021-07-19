@@ -3,7 +3,7 @@
  * https://github.com/SuperHouse/AQS/blob/main/Firmware/AirQualitySensorD1Mini/AirQualitySensorD1Mini.ino
  *
  */
-#define VERSION "1.0"
+#define VERSION "1.1"
 
 /*------------------- Configuration -------------------------*/
 // Configuration should be done in the included file:
@@ -49,7 +49,7 @@ char g_mqtt_json_topic[50];                 // MQTT topic for reporting all valu
 //time_t g_time;                              // Variable tiempo
 
 //General
-String g_cliente_ID;                        // Simulate chipID
+char* g_cliente_ID;                        // Simulate chipID
 
 unsigned long g_tStart;                     // Initial time for measuring time spent
 unsigned long g_tEnd;                       // End time for measuring time spent
@@ -87,19 +87,22 @@ void setup()
   Serial.println(VERSION);
 
   // We need a unique device ID for our MQTT client connection
-  g_cliente_ID = NewClientID();       // Get ID. Revisar TODO.
+  // g_cliente_ID = NewClientID();
+  g_cliente_ID = "IDSPV001";       // Get ID. Revisar TODO.
 
+
+  /*------------------TOPICS-----------------------------------------------------------------------------------------*/
   // Set up the topics for publishing sensor readings. By inserting the unique ID,
   // the result is of the form: "arduino_1/GSR/valor" etc
   sprintf(g_command_topic, "cmnd/%/COMMAND", g_cliente_ID);     // For receiving commands
 
   #if REPORT_MQTT_SEPARATE
-    sprintf(g_GSR_mqtt_topic, "arduino_1/GSR/valor", g_cliente_ID);    // Data form AN33IoT
-    sprintf(g_time_mqtt_topic, "arduino_1/GSR/tiempo", g_cliente_ID);    // Data form AN33IoT
+    sprintf(g_GSR_mqtt_topic, "arduino_1/%s/GSR/valor", g_cliente_ID);    // Data form AN33IoT
+    sprintf(g_time_mqtt_topic, "arduino_1/%s/GSR/tiempo", g_cliente_ID);    // Data form AN33IoT
   #endif
 
   #if REPORT_MQTT_JSON
-    sprintf(g_mqtt_json_topic, "arduino_1/%x/SENSOR", g_cliente_ID);   // Data from AN33IoT
+    sprintf(g_mqtt_json_topic, "arduino_1/%s/SENSOR", g_cliente_ID);   // Data from AN33IoT
   #endif
 
   // Report the MQTT topics to the serial console
@@ -155,7 +158,7 @@ void loop() {
 
 }
 
-// FUNCTION - Generate client ID (chipID)
+// FUNCTION - Generate client ID (chipID) ------------------------------------------------
 /*
  *  TODO: Que las iniciales del paciente formen parte del ID. Que se intrduzca por teclado.
  *  Compatibilidad con base de datoso para la numeracion y que sea un ID único.
@@ -174,7 +177,7 @@ String NewClientID()
   Serial.println(clientID);
 }
 
-// FUNCTION - Connect to WiFi
+// FUNCTION - Connect to WiFi ---------------------------------------------------------------
 bool initWiFi()
 {
    delay(10);
@@ -330,7 +333,7 @@ void reportToMqtt()
 
       if (true == g_GSR_readings_taken)
       {
-         sprintf(g_mqtt_message_buffer,  "{\"IDSPV001\":{\"GSR\":%i,\"GSR Time\":%i,\"CF10\":%i}}",
+         sprintf(g_mqtt_message_buffer,  "{\"IDSPV001\":{\"GSR\":%i,\"GSR Time\":%i}}",
               g_GSR_value, String(g_GSR_time));
       }
       mqttClient.publish(g_mqtt_json_topic, g_mqtt_message_buffer);
@@ -358,13 +361,16 @@ void reportToSerial()
   if (true == g_GSR_readings_taken)
   {
     /* Report GSR value*/
-    Serial.print("GSR: ");
+    //Serial.print(g_cliente_ID);
+    Serial.print(g_GSR_mqtt_topic);
+    Serial.print(" topic is GSR: ");
     Serial.println(String(g_paquete));
 
     /* Report GSR time value*/
     Serial.print("Time: ");
-    Serial.print(String(g_GSR_time));
+    Serial.println(String(g_GSR_time));
 
   }
+  Serial.println();
 }
 
